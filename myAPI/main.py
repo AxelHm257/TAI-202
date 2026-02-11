@@ -1,19 +1,17 @@
-#importaciones
 from fastapi import FastAPI
 import asyncio
 
-#insrancia del servidor
-app= FastAPI()
+app = FastAPI(title="Práctica de Documentación")
 
-#endpoints
 @app.get("/")
-async def holamundo():
-    return {"mensaje":"Hola Mundo FastAPI"}
+async def inicio():
+    return {"mensaje": "Funcionando"}
 
 @app.get("/Bienvenido")
-async def Bienvenido():
+async def bienvenido():
     await asyncio.sleep(5)
-    return {
-        "mensaje":"Hola Mundo FastAPI",
-        "estatus":"200",
-    }
+    return {"mensaje": "Hola Mundo FastAPI", "estatus": "200"}
+
+@app.get("/usuario/detalles")
+async def detalles(nombre: str, edad: int):
+    return {"nombre": nombre, "edad": edad}
