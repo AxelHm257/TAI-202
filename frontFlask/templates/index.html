@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Lista de Usuarios</h2>
+    <ul>
+        {% for u in usuarios %}
+        <li>
+            ID: {{u.id}} - {{u.nombre}} ({{u.edad}} años)
+            <a href="/borrar/{{u.id}}">[Eliminar]</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <hr>
+    <h3>Agregar Nuevo</h3>
+    <form action="/enviar" method="POST">
+        <input type="number" name="id" placeholder="ID">
+        <input type="text" name="nombre" placeholder="Nombre">
+        <input type="number" name="edad" placeholder="Edad">
+        <button type="submit">Guardar</button>
+    </form>
+</body>
+</html>

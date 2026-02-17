@@ -27,14 +27,13 @@ async def agregar_usuarios(usuario: dict):
 
 @app.put("/v1/usuarios/{usuario_id}", tags=['HTTP CRUD'])
 async def actualizar_usuario_completo(usuario_id: int, usuario_actualizado: dict):
-    # Buscamos el índice del usuario
+
     for indice, usr in enumerate(usuarios):
         if usr["id"] == usuario_id:
-            # Reemplazamos el diccionario viejo por el nuevo
+
             usuarios[indice] = usuario_actualizado
             return {"mensaje": "Usuario actualizado", "datos": usuarios[indice]}
     
-    # Si termina el ciclo y no lo encuentra
     raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
 
@@ -43,7 +42,7 @@ async def actualizar_usuario_parcial(usuario_id: int, datos_parciales: dict):
     """PATCH: Modifica solo los campos enviados."""
     for usr in usuarios:
         if usr["id"] == usuario_id:
-            # Actualizamos solo las llaves que vienen en el diccionario
+
             usr.update(datos_parciales)
             return {"mensaje": "Usuario actualizado parcialmente", "usuario": usr}
     
