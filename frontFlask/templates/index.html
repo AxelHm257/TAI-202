@@ -1,23 +1,39 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Usuarios - Práctica 3</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        h2, h3 { color: #333; }
+        ul { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); list-style: none; }
+        li { padding: 10px 0; border-bottom: 1px solid #eee; }
+        li:last-child { border-bottom: none; }
+        .btn-delete { color: #d9534f; text-decoration: none; margin-left: 10px; font-weight: bold; }
+        form { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: inline-block; }
+        input { display: block; margin-bottom: 10px; padding: 8px; width: 250px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #5cb85c; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #4cae4c; }
+    </style>
+</head>
 <body>
-    <h2>Lista de Usuarios</h2>
+    <h2>Lista de Usuarios (Conectado a FastAPI en Puerto 5000)</h2>
     <ul>
         {% for u in usuarios %}
         <li>
-            ID: {{u.id}} - {{u.nombre}} ({{u.edad}} años)
-            <a href="/borrar/{{u.id}}">[Eliminar]</a>
+            <strong>ID:</strong> {{ u.id }} | <strong>Nombre:</strong> {{ u.nombre }} | <strong>Edad:</strong> {{ u.edad }} años
+            <a href="/borrar/{{ u.id }}" class="btn-delete" onclick="return confirm('¿Eliminar usuario?')">[Eliminar]</a>
         </li>
         {% endfor %}
     </ul>
 
     <hr>
-    <h3>Agregar Nuevo</h3>
+    <h3>Agregar Nuevo Usuario</h3>
     <form action="/enviar" method="POST">
-        <input type="number" name="id" placeholder="ID">
-        <input type="text" name="nombre" placeholder="Nombre">
-        <input type="number" name="edad" placeholder="Edad">
-        <button type="submit">Guardar</button>
+        <input type="number" name="id" placeholder="ID (Ej: 4)" required min="1">
+        <input type="text" name="nombre" placeholder="Nombre (Mínimo 3 letras)" required minlength="3" maxlength="50">
+        <input type="number" name="edad" placeholder="Edad (1-123)" required min="1" max="123">
+        <button type="submit">Guardar en API</button>
     </form>
 </body>
 </html>
