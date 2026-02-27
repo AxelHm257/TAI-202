@@ -1,47 +1,77 @@
-from fastapi import FastAPI, status, HTTPException
-from pydantic import BaseModel, Field # <--- Importamos las validaciones
-from typing import Optional 
-import asyncio
+from fastapi import FastAPI, HTTPException, status
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional
+from datetime import datetime
 
-app = FastAPI(
-    title="Mi primer API",
-    description="Ivan Isay Guerra L",
-    version="1.0"
-)
+app = FastAPI(title="API Biblioteca Digital UPQ")
 
-# 1. Definimos el Modelo de Validación (Pydantic)
-class crear_usuario(BaseModel):
-    id: int = Field(..., gt=0, description="Identificador de usuario")
-    nombre: str = Field(..., min_length=3, max_length=50)
-    edad: int = Field(..., ge=1, le=123)
+# MODELOS (Pydantic)
+class Libro(BaseModel):
+    id: int
+    titulo: str = Field(..., min_length=2, max_length=100)
+    autor: str
+    paginas: int = Field(..., gt=1) # 
+    anio: int = Field(..., gt=1450, le=datetime.now().year) 
+    estado: str = Field("disponible", pattern="^(disponible|prestado)$") 
 
-usuarios = [
-    {"id": 1, "nombre": "Eros", "edad": 21},
-    {"id": 2, "nombre": "Axel", "edad": 20},
-    {"id": 3, "nombre": "Carmen", "edad": 21},
-]
+class Prestamo(BaseModel):
+    id_prestamo: int
+    libro_id: int
+    usuario_nombre: str
+    usuario_correo: EmailStr 
 
-@app.get("/v1/usuarios/", tags=['HTTP CRUD'])
-async def leer_usuarios():
-    return {"total": len(usuarios), "usuarios": usuarios}
+# BASE DE DATOS TEMPORAL
+libros = []
+prestamos = []
 
-@app.post("/v1/usuarios/", tags=['HTTP CRUD'], status_code=status.HTTP_201_CREATED)
-async def agregar_usuarios(usuario: crear_usuario): # <--- Usamos el modelo aquí
-    # Verificamos si el ID ya existe
-    if any(usr["id"] == usuario.id for usr in usuarios):
-        raise HTTPException(status_code=400, detail="El id ya existe")
+# ENDPOINTS
+@app.post("/libros/", status_code=status.HTTP_201_CREATED, tags=["Libros"]) 
+async def registrar_libro(libro: Libro):
+    if any(l["id"] == libro.id for l in libros):
+        raise HTTPException(status_code=400, detail="ID de libro ya registrado")
+    libros.append(libro.model_dump())
+    return {"mensaje": "Libro registrado exitosamente", "libro": libro}
+
+@app.get("/libros/", tags=["Libros"]) # 
+async def listar_libros():
+    return libros
+
+@app.get("/libros/buscar", tags=["Libros"]) 
+async def buscar_libro(nombre: str):
+    resultado = [l for l in libros if nombre.lower() in l["titulo"].lower()]
+    return resultado
+
+@app.post("/prestamos/", status_code=201, tags=["Prestamos"])
+async def registrar_prestamo(p: Prestamo):
+    # Buscar el libro
+    libro = next((l for l in libros if l["id"] == p.libro_id), None)
+    if not libro:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
     
-    # Convertimos el modelo a diccionario para guardarlo
-    usuarios.append(usuario.model_dump()) 
-    return {"mensaje": "Usuario Creado", "datos": usuario}
-
-@app.delete("/v1/usuarios/{usuario_id}", tags=['HTTP CRUD'])
-async def eliminar_usuario(usuario_id: int):
-    for i, usr in enumerate(usuarios):
-        if usr["id"] == usuario_id:
-            usuario_eliminado = usuarios.pop(i)
-            return {"mensaje": "Usuario eliminado", "usuario": usuario_eliminado}
+    if libro["estado"] == "prestado":
+        raise HTTPException(status_code=409, detail="El libro ya está prestado") # 
     
-    raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    libro["estado"] = "prestado"
+    prestamos.append(p.model_dump())
+    return {"mensaje": "Préstamo registrado", "prestamo": p}
 
-# (Tus rutas PUT y PATCH se quedan igual o puedes adaptarlas luego)
+@app.put("/libros/devolver/{libro_id}", status_code=200, tags=["Prestamos"]) 
+async def devolver_libro(libro_id: int):
+    libro = next((l for l in libros if l["id"] == libro_id), None)
+    if not libro:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    
+    libro["estado"] = "disponible"
+    return {"mensaje": "Libro devuelto exitosamente"}
+
+@app.delete("/prestamos/{id_prestamo}", tags=["Prestamos"])
+async def eliminar_prestamo(id_prestamo: int):
+    global prestamos
+    # Verificar si el préstamo existe antes de intentar borrarlo
+    prestamo_existente = next((p for p in prestamos if p["id_prestamo"] == id_prestamo), None)
+    
+    if not prestamo_existente:
+        raise HTTPException(status_code=409, detail="El registro de préstamo ya no existe") 
+    
+    prestamos = [p for p in prestamos if p["id_prestamo"] != id_prestamo]
+    return {"mensaje": "Registro de préstamo eliminado"}
