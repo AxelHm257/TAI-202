@@ -108,10 +108,3 @@ async def eliminar_usuario(usuario_id: int):
         status_code=404,
         detail="Usuario no encontrado"
     )
-
-# *********
-# Seguridad HTTP BASIC
-# *********
-
-security= HTTPBasic()
-
