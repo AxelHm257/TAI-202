@@ -1,77 +1,109 @@
-from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
-from datetime import datetime
+from fastapi import FastAPI, status, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from typing import Optional
+from pydantic import BaseModel,Field 
 
-app = FastAPI(title="API Biblioteca Digital UPQ")
+app = FastAPI()
 
-# MODELOS (Pydantic)
-class Libro(BaseModel):
-    id: int
-    titulo: str = Field(..., min_length=2, max_length=100)
-    autor: str
-    paginas: int = Field(..., gt=1) # 
-    anio: int = Field(..., gt=1450, le=datetime.now().year) 
-    estado: str = Field("disponible", pattern="^(disponible|prestado)$") 
 
-class Prestamo(BaseModel):
-    id_prestamo: int
-    libro_id: int
-    usuario_nombre: str
-    usuario_correo: EmailStr 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# BASE DE DATOS TEMPORAL
-libros = []
-prestamos = []
+usuarios=[
+    {"id":1,"nombre":"Fany","edad":21},
+    {"id":2,"nombre":"Ali","edad":21},
+    {"id":3,"nombre":"Dulce","edad":21},
+]
 
-# ENDPOINTS
-@app.post("/libros/", status_code=status.HTTP_201_CREATED, tags=["Libros"]) 
-async def registrar_libro(libro: Libro):
-    if any(l["id"] == libro.id for l in libros):
-        raise HTTPException(status_code=400, detail="ID de libro ya registrado")
-    libros.append(libro.model_dump())
-    return {"mensaje": "Libro registrado exitosamente", "libro": libro}
+@app.get("/")
+async def holamundo(): 
+    return {"mensaje": "Hola mundo FastAPI"}
 
-@app.get("/libros/", tags=["Libros"]) # 
-async def listar_libros():
-    return libros
+@app.get("/bienvenido")
+async def bienvenido(): 
+    await asyncio.sleep(5)
+    return {"mensaje": "Bienvenido a FastAPI"}
 
-@app.get("/libros/buscar", tags=["Libros"]) 
-async def buscar_libro(nombre: str):
-    resultado = [l for l in libros if nombre.lower() in l["titulo"].lower()]
-    return resultado
 
-@app.post("/prestamos/", status_code=201, tags=["Prestamos"])
-async def registrar_prestamo(p: Prestamo):
-    # Buscar el libro
-    libro = next((l for l in libros if l["id"] == p.libro_id), None)
-    if not libro:
-        raise HTTPException(status_code=404, detail="Libro no encontrado")
-    
-    if libro["estado"] == "prestado":
-        raise HTTPException(status_code=409, detail="El libro ya está prestado") # 
-    
-    libro["estado"] = "prestado"
-    prestamos.append(p.model_dump())
-    return {"mensaje": "Préstamo registrado", "prestamo": p}
+@app.get("/usuario/detalles")
+async def detalles(nombre: str, edad: int):
+    return {"nombre":nombre, "edad": edad}
 
-@app.put("/libros/devolver/{libro_id}", status_code=200, tags=["Prestamos"]) 
-async def devolver_libro(libro_id: int):
-    libro = next((l for l in libros if l["id"] == libro_id), None)
-    if not libro:
-        raise HTTPException(status_code=404, detail="Libro no encontrado")
-    
-    libro["estado"] = "disponible"
-    return {"mensaje": "Libro devuelto exitosamente"}
 
-@app.delete("/prestamos/{id_prestamo}", tags=["Prestamos"])
-async def eliminar_prestamo(id_prestamo: int):
-    global prestamos
-    # Verificar si el préstamo existe antes de intentar borrarlo
-    prestamo_existente = next((p for p in prestamos if p["id_prestamo"] == id_prestamo), None)
-    
-    if not prestamo_existente:
-        raise HTTPException(status_code=409, detail="El registro de préstamo ya no existe") 
-    
-    prestamos = [p for p in prestamos if p["id_prestamo"] != id_prestamo]
-    return {"mensaje": "Registro de préstamo eliminado"}
+
+@app.get("/v1/usuarios/",tags=['HTTP CRUD'])
+async def leer_usuarios():
+    return{
+        "total":len(usuarios),
+        "usuarios":usuarios,
+        "status": "200"
+    }
+
+
+class crear_usuario(BaseModel):
+    id:int=Field(...,gt=0, description="Identificador de usuario") 
+    nombre:str=Field(..., min_length=3, max_length=50, example="Nombre")
+    edad:int=Field(..., gt=1, le=123, description="Edad ", example=30)
+
+@app.post("/v1/usuarios/",tags=['HTTP CRUD'])
+async def agregar_usuarios(usuario:crear_usuario):
+    for usr in usuarios:
+        if usr["id"] == usuario.id: 
+            raise HTTPException(
+                status_code=400,
+                detail="El usuario con este ID ya existe"
+            )
+    usuarios.append(usuario)
+    return {
+        "mensaje":"Usuario Agregado",
+        "Datos nuevos":usuario
+    }
+
+
+@app.put("/v1/usuarios/",tags=['HTTP CRUD'])
+async def actualizar_usuario(usuario_id: int, usuario: dict):
+    for usr in usuarios:
+        if usr["id"] == usuario_id:
+            usr.update(usuario)
+            return{
+                "mensaje": "Usuario Actualizado",
+                "Datos actualizados": usr,
+            }
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
+
+@app.patch("/v1/usuarios/",tags=['HTTP CRUD'])
+async def modificar_usuario(usuario_id: int, usuario: dict):
+    for usr in usuarios:
+        if usr["id"] == usuario_id:
+            usr.update(usuario)
+            return{
+                "mensaje": "Usuario Modificado",
+                "Datos modificados": usr,
+            }
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
+
+@app.delete("/v1/usuarios/",tags=['HTTP CRUD'])
+async def eliminar_usuario(usuario_id: int):
+    for i, usr in enumerate(usuarios):
+        if usr["id"] == usuario_id:
+            usuarios.pop(i)
+            return{
+                "mensaje": "Usuario Eliminado",
+                "id eliminado": usuario_id,
+            }
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
