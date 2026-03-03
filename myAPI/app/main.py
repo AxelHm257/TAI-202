@@ -2,8 +2,9 @@ from fastapi import FastAPI, status, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from typing import Optional
-from pydantic import BaseModel,Field 
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from pydantic import BaseModel,Field
+from fastapi.security import HTTPBasic, HTTPBasicCredentials #<- importando el httpbasic,credentials#
+import secrets
 
 app = FastAPI()
 
@@ -66,6 +67,22 @@ async def agregar_usuarios(usuario:crear_usuario):
         "Datos nuevos":usuario
     }
 
+#seguridad HTTP BASIC
+security= HTTPBasic()
+#Funcion para corroborar las credenciales
+def verificar_peticion(credenciales:HTTPBasicCredentials=Depends(security)):
+    usuario_correcto=secrets.compare_digest(credenciales.username,"AxelSantiago")
+    contrasena_correcta=secrets.compare_digest(credenciales.password,"123456")
+
+    if not(usuario_correcto and contrasena_correcta):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="credenciales no validas"
+        )
+    return credenciales.username 
+
+
+
 
 @app.put("/v1/usuarios/",tags=['HTTP CRUD'])
 async def actualizar_usuario(usuario_id: int, usuario: dict):
@@ -96,22 +113,15 @@ async def modificar_usuario(usuario_id: int, usuario: dict):
     )
 
 @app.delete("/v1/usuarios/",tags=['HTTP CRUD'])
-async def eliminar_usuario(usuario_id: int):
+async def eliminar_usuario(usuario_id: int,usuarioAuth:str=Depends(verificar_peticion)):
     for i, usr in enumerate(usuarios):
         if usr["id"] == usuario_id:
             usuarios.pop(i)
             return{
-                "mensaje": "Usuario Eliminado",
+                "mensaje": f"Usuario Eliminado por {usuarioAuth}",
                 "id eliminado": usuario_id,
             }
     raise HTTPException(
         status_code=404,
         detail="Usuario no encontrado"
     )
-
-# *********
-# Seguridad HTTP BASIC
-# *********
-
-security= HTTPBasic()
-
