@@ -2,9 +2,10 @@ from fastapi import FastAPI, status, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
+from datetime import datetime
 
 app = FastAPI(title="API de Reservas del Restaurante")
 security = HTTPBasic()
@@ -17,8 +18,27 @@ class Reserva(BaseModel):
     id: int = Field(..., gt=0, description="ID de la reserva", example=1)
     nombre_cliente: str = Field(..., min_length=3, max_length=50, description="Nombre del cliente", example="Juan Pérez")
     fecha_reserva: str = Field(..., description="Fecha de la reserva en formato YYYY-MM-DD", example="2024-07-01")
-    numero_personas: int = Field(..., gt=0, description="Número de personas para la reserva", example=4)
+    numero_personas: int = Field(..., gt=0, le=20, description="Número de personas (máximo 20)", example=4)
     confirmada: bool = Field(default=False, description="Estado de confirmación de la reserva")
+
+    @field_validator('fecha_reserva')
+    @classmethod
+    def validar_fecha(cls, v):
+        try:
+            fecha_dt = datetime.strptime(v, '%Y-%m-%d')
+        except ValueError:
+            raise ValueError('El formato de fecha debe ser YYYY-MM-DD')
+        
+        if fecha_dt.date() < datetime.now().date():
+            raise ValueError('La fecha de reserva no puede ser en el pasado')
+        return v
+
+    @field_validator('nombre_cliente')
+    @classmethod
+    def validar_nombre(cls, v):
+        if not v.replace(" ", "").isalpha():
+            raise ValueError('El nombre del cliente solo debe contener letras')
+        return v
 
 @app.get("/", tags=['General'])
 async def home():
