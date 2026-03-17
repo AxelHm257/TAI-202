@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: 99e90bab-2110-4936-8308-6f22e2cb79a8
+
+localResources:
+  collections:
+    - ..\APIRestaurant\postman_collection.json
