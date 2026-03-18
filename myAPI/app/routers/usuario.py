@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-from myAPI.app.models.models import crear_usuario
-from myAPI.app.data.data import usuarios
-from myAPI.app.security.security import verificar_peticion
+from app.models.usuario import crear_usuario
+from app.data.database import usuarios
+from app.security.auth import verificar_peticion
 
 router = APIRouter(
     prefix="/v1/usuarios",
