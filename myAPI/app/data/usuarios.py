@@ -7,5 +7,4 @@ class usuario(Base):
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String)
     edad = Column(Integer)
-    
-    
+
