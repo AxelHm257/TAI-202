@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
-from app.models.usuario import crear_usuario
+from app.models.usuario import crear_usuario, actualizar_usuario_schema, usuario_response
 from app.data.usuarios import usuario as UsuarioDB
 from app.data.db import get_db
 from app.security.auth import verificar_peticion
+from typing import List
 
 router = APIRouter(
     prefix="/v1/usuarios",
@@ -21,8 +22,17 @@ async def leer_usuarios(db: Session = Depends(get_db)):
         "status": "200"
     }
 
+@router.get("/{usuario_id}", response_model=usuario_response)
+async def leer_usuario_por_id(usuario_id: int, db: Session = Depends(get_db)):
+    db_user = db.query(UsuarioDB).filter(UsuarioDB.id == usuario_id).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado"
+        )
+    return db_user
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=usuario_response)
 async def agregar_usuarios(usuario_in: crear_usuario, db: Session = Depends(get_db)):
     # Crear nueva instancia de base de datos sin pasar el ID
     nuevo_usuario = UsuarioDB(
@@ -34,13 +44,10 @@ async def agregar_usuarios(usuario_in: crear_usuario, db: Session = Depends(get_
     db.commit()
     db.refresh(nuevo_usuario)
     
-    return {
-        "mensaje": "Usuario Agregado en Base de Datos",
-        "Datos nuevos": nuevo_usuario
-    }
+    return nuevo_usuario
 
-@router.put("/{usuario_id}")
-async def actualizar_usuario(usuario_id: int, usuario_update: dict, db: Session = Depends(get_db)):
+@router.put("/{usuario_id}", response_model=usuario_response)
+async def actualizar_usuario(usuario_id: int, usuario_update: actualizar_usuario_schema, db: Session = Depends(get_db)):
     db_user = db.query(UsuarioDB).filter(UsuarioDB.id == usuario_id).first()
     if not db_user:
         raise HTTPException(
@@ -49,16 +56,14 @@ async def actualizar_usuario(usuario_id: int, usuario_update: dict, db: Session 
         )
     
     # Actualizar campos
-    for key, value in usuario_update.items():
+    update_data = usuario_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(db_user, key, value)
     
     db.commit()
     db.refresh(db_user)
     
-    return {
-        "mensaje": "Usuario Actualizado en Base de Datos",
-        "Datos actualizados": db_user
-    }
+    return db_user
 
 @router.delete("/{usuario_id}")
 async def eliminar_usuario(usuario_id: int, db: Session = Depends(get_db), usuarioAuth: str = Depends(verificar_peticion)):
